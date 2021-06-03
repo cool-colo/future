@@ -256,6 +256,9 @@ class Future : private FutureBase<T> {
   template <class>
   friend class FutureBase;
 
+  template <class T2>
+  friend Future<T2> makeFuture(T2&&);
+
   template <class>
   friend class Future;
 

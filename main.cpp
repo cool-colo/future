@@ -24,6 +24,8 @@ int main(){
     return std::to_string(i);
   }).thenValue([](std::string&& s){
     return std::vector<std::string>{s,s,s,s};
+  }).ensure([]{
+    std::cout<<"ensure"<<std::endl;
   });
 
 

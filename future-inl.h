@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include "semaphore.h"
 
 
@@ -28,6 +29,12 @@ void waitImpl(FutureType& f) {
 
 
 
+
+}
+
+template <class T>
+Future<T> makeFuture(T&& t) {
+  return Future<T>(std::shared_ptr<Core<T>>(Core<T>::make(std::move(t))));
 }
 
 template <class T>
@@ -136,7 +143,7 @@ FutureBase<T>::thenImplementation(
   auto f = p->getFuture();
 
   this->setCallback_([p, func = static_cast<F&&>(func)](T&& t) mutable {
-    p->setValue(std::move(static_cast<F&&>(func)(std::move(t))));
+    p->setValue(std::move(static_cast<F&&>(func)(std::move(t))).value());
   });
 
   return f;
