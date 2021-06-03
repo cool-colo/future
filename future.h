@@ -204,7 +204,7 @@ class Future : private FutureBase<T> {
   ///
   /// A Future for the return type of func is returned.
   ///
-  ///   Future<string> f2 = f1.thenValue([](auto&& v) {
+  ///   Future<string> f2 = f1.then([](auto&& v) {
   ///     ...
   ///     return string("foo");
   ///   });
@@ -219,7 +219,7 @@ class Future : private FutureBase<T> {
   /// - `RESULT.valid() == true`
   template <typename F>
   Future<typename valueCallableResult<T, F>::value_type>
-  thenValue(F&& func) &&;
+  then(F&& func) &&;
 
 
 

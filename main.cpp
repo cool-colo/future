@@ -18,11 +18,11 @@ int main(){
   });
 
 
-  auto f1 = std::move(f).thenValue([](int i){
+  auto f1 = std::move(f).then([](int i){
     return i*i;
-  }).thenValue([](int i){
+  }).then([](int i){
     return std::to_string(i);
-  }).thenValue([](std::string&& s){
+  }).then([](std::string&& s){
     return std::vector<std::string>{s,s,s,s};
   }).ensure([]{
     std::cout<<"ensure"<<std::endl;

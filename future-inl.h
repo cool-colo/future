@@ -168,7 +168,7 @@ template <class F>
 typename std::
     enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
     Future<T>::unwrap() && {
-  return std::move(*this).thenValue(
+  return std::move(*this).then(
       [](Future<typename isFuture<T>::Inner> internal_future) {
         return internal_future;
       });
@@ -177,7 +177,7 @@ typename std::
 template <class T>
 template <typename F>
 Future<typename valueCallableResult<T, F>::value_type>
-Future<T>::thenValue(F&& func) && {
+Future<T>::then(F&& func) && {
   auto lambdaFunc = [f = static_cast<F&&>(func)](
                         T&& t) mutable {
     return static_cast<F&&>(f)(std::move(t));
@@ -191,7 +191,7 @@ Future<T>::thenValue(F&& func) && {
 template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F&& func) && {
-  return std::move(*this).thenValue(
+  return std::move(*this).then(
       [funcw = static_cast<F&&>(func)](T&& t) mutable {
         static_cast<F&&>(funcw)();
         return makeFuture(std::move(t));
