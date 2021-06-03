@@ -216,3 +216,39 @@ T Future<T>::get() && {
   wait();
   return std::move(std::move(*this).value());
 }
+
+
+template <class T>
+Future<std::vector<T>> collectAll(std::vector<Future<T>>&& futures){
+  return collectAll(futures.begin(), futures.end());
+}
+
+
+template <class InputIterator>
+Future<std::vector<
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectAll(InputIterator first, InputIterator last) {
+  using F = typename std::iterator_traits<InputIterator>::value_type;
+  using T = typename F::value_type;
+
+  struct Context {
+    explicit Context(size_t n) : results(n) {}
+    ~Context() {
+      p.setValue(std::move(std::move(results)));
+    }
+    Promise<std::vector<T>> p;
+    std::vector<T> results;
+  };
+
+
+  auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
+
+  for (size_t i = 0; first != last; ++first, ++i) {
+    first->setCallback_(
+        [i, ctx](T&& t) {
+          ctx->results[i] = std::move(t);
+        });
+  }
+
+  return ctx->p.getFuture();
+}

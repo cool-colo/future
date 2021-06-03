@@ -70,5 +70,6 @@ void CoreBase::setCallback_(Callback&& callback) {
 void CoreBase::doCallback(State priorState) {
   assert(state_ == State::Done);
   callback_(*this);
+  callback_.~Callback();
 }
 

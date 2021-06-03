@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <numeric>
 #include "core.h"
 #include "promise.h"
 #include "future.h"
@@ -33,7 +34,26 @@ int main(){
   for (auto& value : std::move(f1).get()){
     std::cout<<value<<std::endl;
   }
-
   t.join();
+
+
+  std::vector<Future<int>> futures;
+  for (int i = 1; i <= 10; i++){
+    auto [p, f] = makePromiseContract<int>();
+    futures.emplace_back(std::move(f));
+
+    std::thread([i, p = std::move(p)] ()mutable{
+      std::this_thread::sleep_for(std::chrono::seconds(i));
+      p.setValue(int(i));
+      std::cout<<"thread setValue:"<<i<<std::endl;
+    }).detach();
+  }
+
+  auto f2 = collectAll(std::move(futures)).then([](std::vector<int>&& results){
+    return std::accumulate(std::begin(results), std::end(results), 0); 
+  });
+  std::cout<<"start wait collectAll"<<std::endl;
+  assert(std::move(f2).get() == 55); 
+  std::cout<<"finished"<<std::endl;
   return 0;
 }
