@@ -252,3 +252,65 @@ collectAll(InputIterator first, InputIterator last) {
 
   return ctx->p.getFuture();
 }
+
+template <class T>
+Future<std::vector<std::pair<size_t, T>>> collectN(std::vector<Future<T>>&& futures, size_t n){
+  return collectN(futures.begin(), futures.end(), n);
+}
+
+
+// collectN (iterator)
+
+template <class InputIterator>
+Future<std::vector<std::pair<
+    size_t,
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectN(InputIterator first, InputIterator last, size_t n) {
+  using F = typename std::iterator_traits<InputIterator>::value_type;
+  using T = typename F::value_type;
+  using Result = std::vector<std::pair<size_t, T>>;
+
+  struct Context {
+    explicit Context(size_t numFutures, size_t min_)
+        : v(numFutures), min(min_) {}
+
+    std::vector<std::optional<T>> v;
+    size_t min;
+    std::atomic<size_t> completed = {0}; // # input futures completed
+    std::atomic<size_t> stored = {0}; // # output values stored
+    Promise<Result> p;
+  };
+
+  assert(n > 0);
+  assert(std::distance(first, last) >= 0);
+
+  auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)), n);
+  for (size_t i = 0; first != last; ++first, ++i) {
+    first->setCallback_([i, ctx](T&& t) {
+      // relaxed because this guards control but does not guard data
+      auto const c = 1 + ctx->completed.fetch_add(1, std::memory_order_relaxed);
+      if (c > ctx->min) {
+        return;
+      }
+      ctx->v[i] = std::move(t);
+
+      // release because the stored values in all threads must be visible below
+      // acquire because no stored value is permitted to be fetched early
+      auto const s = 1 + ctx->stored.fetch_add(1, std::memory_order_acq_rel);
+      if (s < ctx->min) {
+        return;
+      }
+      Result result;
+      result.reserve(ctx->completed.load());
+      for (size_t j = 0; j < ctx->v.size(); ++j) {
+        auto& entry = ctx->v[j];
+        if (entry.has_value()) {
+          result.emplace_back(j, std::move(entry).value());
+        }
+      }
+      ctx->p.setValue(std::move(result));
+    });
+  }
+
+  return ctx->p.getFuture();
+}

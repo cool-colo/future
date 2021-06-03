@@ -36,7 +36,7 @@ int main(){
   }
   t.join();
 
-
+  {
   std::vector<Future<int>> futures;
   for (int i = 1; i <= 10; i++){
     auto [p, f] = makePromiseContract<int>();
@@ -54,6 +54,29 @@ int main(){
   });
   std::cout<<"start wait collectAll"<<std::endl;
   assert(std::move(f2).get() == 55); 
+  }
+
+  {
+  std::vector<Future<int>> futures;
+  for (int i = 1; i <= 10; i++){
+    auto [p, f] = makePromiseContract<int>();
+    futures.emplace_back(std::move(f));
+
+    std::thread([i, p = std::move(p)] ()mutable{
+      p.setValue(int(i));
+    }).detach();
+  }
+
+  auto f2 = collectN(std::move(futures),9).then([](std::vector<std::pair<size_t, int>>&& results){
+    int sum = 0;
+    for(auto[index, value] : results){
+      sum += value;
+    }
+    return sum;
+  });
+  std::cout<<"start wait collectAll"<<std::endl;
+  assert(std::move(f2).get() < 55); 
+  }
   std::cout<<"finished"<<std::endl;
   return 0;
 }
