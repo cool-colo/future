@@ -74,8 +74,24 @@ int main(){
     }
     return sum;
   });
-  std::cout<<"start wait collectAll"<<std::endl;
+  std::cout<<"start wait collectN"<<std::endl;
   assert(std::move(f2).get() < 55); 
+  }
+
+  {
+  std::vector<Future<int>> futures;
+  for (int i = 1; i <= 10; i++){
+    auto [p, f] = makePromiseContract<int>();
+    futures.emplace_back(std::move(f));
+
+    std::thread([i, p = std::move(p)] ()mutable{
+      p.setValue(int(1));
+    }).detach();
+  }
+
+  auto f2 = collectAny(std::move(futures));
+  std::cout<<"start wait collectAny"<<std::endl;
+  assert(std::move(f2).get().second == 1); 
   }
   std::cout<<"finished"<<std::endl;
   return 0;

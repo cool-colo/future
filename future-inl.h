@@ -314,3 +314,36 @@ collectN(InputIterator first, InputIterator last, size_t n) {
 
   return ctx->p.getFuture();
 }
+
+
+template <class T>
+Future<std::pair<size_t, T>> collectAny(std::vector<Future<T>>&& futures){
+  return collectAny(futures.begin(), futures.end());
+}
+
+
+// collectAny (iterator)
+
+template <class InputIterator>
+Future<std::pair<
+    size_t,
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectAny(InputIterator first, InputIterator last) {
+  using F = typename std::iterator_traits<InputIterator>::value_type;
+  using T = typename F::value_type;
+
+  struct Context {
+    Promise<std::pair<size_t, T>> p;
+    std::atomic<bool> done{false};
+  };
+
+  auto ctx = std::make_shared<Context>();
+  for (size_t i = 0; first != last; ++first, ++i) {
+    first->setCallback_([i, ctx](T&& t) {
+      if (!ctx->done.exchange(true, std::memory_order_relaxed)) {
+        ctx->p.setValue(std::make_pair(i, std::move(t)));
+      }
+    });
+  }
+  return ctx->p.getFuture();
+}
